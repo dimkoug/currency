@@ -42,30 +42,46 @@ services:
       timeout: 5s
       retries: 5
 
+  # One-shot: runs migrations directly against Postgres, then exits. Backend
+  # replicas wait for this to complete so they never race to migrate.
+  migrate:
+    build: ./backend
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    env_file: .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+    cpus: 1
+    mem_limit: 512m
+
   backend:
     build: ./backend
     env_file: .env
-    environment:
-      # Migrations run directly against Postgres, bypassing pgbouncer.
-      MIGRATE_DB_HOST: postgres
-      MIGRATE_DB_PORT: "5432"
     depends_on:
       postgres: {condition: service_healthy}
       pgbouncer: {condition: service_started}
       redis: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
     expose:
       - "8000"
-    cpus: 4
-    mem_limit: 2g
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: "3"
+          memory: 4g
 
   celery-worker:
     build: ./backend
     command: celery -A config worker -l info
     env_file: .env
     depends_on:
-      backend: {condition: service_started}
-      pgbouncer: {condition: service_started}
       redis: {condition: service_healthy}
+      pgbouncer: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
     cpus: 2
     mem_limit: 1g
 
@@ -74,33 +90,40 @@ services:
     command: celery -A config beat -l info
     env_file: .env
     depends_on:
-      backend: {condition: service_started}
-      pgbouncer: {condition: service_started}
       redis: {condition: service_healthy}
+      pgbouncer: {condition: service_started}
+      migrate: {condition: service_completed_successfully}
     cpus: 0.5
     mem_limit: 256m
 
+  # Internal API micro-cache (sidecar). nginx forwards /api/ here.
+  varnish:
+    build: ./infra/varnish
+    expose:
+      - "80"
+    depends_on:
+      - frontend
+    cpus: 2
+    mem_limit: 1g
+
+  # Public front door: serves the SPA, sends /ws straight to the backend, and
+  # routes /api through Varnish.
   frontend:
     build:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL}
         VITE_WS_URL: ${VITE_WS_URL}
-    expose:
-      - "80"
-    depends_on:
-      - backend
-    cpus: 1
-    mem_limit: 256m
-
-  varnish:
-    build: ./infra/varnish
     ports:
       - "8080:80"
     depends_on:
-      - frontend
+      - backend
     cpus: 2
-    mem_limit: 1g
+    mem_limit: 512m
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
 
 volumes:
   pgdata:
