@@ -9,20 +9,29 @@ RATES_GROUP = "rates"
 
 @transaction.atomic
 def save_snapshot(snapshot):
-    """Persist a RateSnapshot: ensure Currency rows, insert base->quote ExchangeRate rows.
+    """Persist a RateSnapshot in a constant number of queries.
+
+    Avoids the N+1 pattern of one get_or_create per currency: fetch the existing
+    codes in a single query, bulk-create only the missing currencies, then
+    bulk-create the rate rows. Foreign keys are assigned by id (Currency's PK is
+    its code), so no Currency instances need to be loaded to build the rates.
 
     Wrapped in a transaction so a failure can't leave orphan Currency rows or a
     partially-written rate snapshot.
     """
-    base, _ = Currency.objects.get_or_create(
-        code=snapshot.base, defaults={"name": snapshot.base}
+    codes = {snapshot.base, *snapshot.rates.keys()}
+    existing = set(
+        Currency.objects.filter(code__in=codes).values_list("code", flat=True)
     )
-    new_rows = []
-    for code, value in snapshot.rates.items():
-        quote, _ = Currency.objects.get_or_create(code=code, defaults={"name": code})
-        if code == snapshot.base:
-            continue
-        new_rows.append(ExchangeRate(base=base, quote=quote, rate=value))
+    missing = [Currency(code=code, name=code) for code in codes if code not in existing]
+    if missing:
+        Currency.objects.bulk_create(missing, ignore_conflicts=True)
+
+    new_rows = [
+        ExchangeRate(base_id=snapshot.base, quote_id=code, rate=value)
+        for code, value in snapshot.rates.items()
+        if code != snapshot.base
+    ]
     ExchangeRate.objects.bulk_create(new_rows)
 
 
