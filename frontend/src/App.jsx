@@ -5,7 +5,11 @@ import LiveRatesBoard from "./components/LiveRatesBoard";
 import Converter from "./components/Converter";
 import HistoryChart from "./components/HistoryChart";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws/rates/";
+// Derive the websocket URL from the page's own origin so it always routes
+// through the same nginx that served the app (which proxies /ws to the backend),
+// regardless of which host/port the site is served on. This avoids brittle
+// build-time hardcoding of host:port.
+const WS_URL = `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws/rates/`;
 
 export default function App() {
   const dispatch = useDispatch();
