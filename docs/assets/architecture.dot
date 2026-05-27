@@ -1,0 +1,47 @@
+digraph arch {
+  rankdir=LR;
+  bgcolor="#0b0f1a";
+  fontname="Helvetica";
+  labelloc="t";
+  fontcolor="#e9eef7";
+  fontsize=20;
+  label="Meridian FX — Real-Time Currency Exchange";
+  nodesep=0.5;
+  ranksep=0.9;
+
+  node [shape=box style="rounded,filled" fontname="Helvetica" fontsize=12
+        fontcolor="#e9eef7" color="#34e5a1" fillcolor="#121826" penwidth=1.6
+        margin="0.22,0.14"];
+  edge [color="#8893a7" fontcolor="#8893a7" fontname="Helvetica" fontsize=10 penwidth=1.3];
+
+  browser  [label="Browser\nReact + Redux Toolkit\nlive WS + REST" fillcolor="#161d2e"];
+  nginx    [label="nginx\nfront door + SPA"];
+  varnish  [label="Varnish\n/api micro-cache (2s)" color="#e8b66a"];
+  backend  [label="backend ×3\nDjango + Channels (uvicorn)" penwidth=2.2];
+  redis    [label="Redis\nchannel layer + broker" fillcolor="#161d2e"];
+  pgb      [label="pgbouncer\ntransaction pool"];
+  pg       [label="PostgreSQL\n(auto-tuned)"];
+  beat     [label="Celery Beat\nschedule 10s"];
+  worker   [label="Celery Worker\nfetch_rates"];
+  forex    [label="Forex API\nECB / Frankfurter" shape=ellipse color="#e8b66a" fontcolor="#e8b66a" fillcolor="#1a1300"];
+
+  // request path
+  browser -> nginx   [label="HTTP + WS"];
+  nginx   -> backend [label="/ws  (direct, LB×3)" color="#34e5a1" fontcolor="#34e5a1" penwidth=2.0];
+  nginx   -> varnish [label="/api"];
+  varnish -> backend [label="miss → origin (LB×3)"];
+
+  // realtime + data
+  backend -> redis   [label="WS fan-out" dir=both color="#34e5a1" fontcolor="#34e5a1"];
+  backend -> pgb     [label="SQL"];
+  pgb     -> pg      [label="pooled"];
+
+  // polling pipeline
+  beat   -> redis    [label="enqueue" style=dashed];
+  redis  -> worker   [label="task" style=dashed];
+  worker -> forex    [label="poll rates" dir=both color="#e8b66a" fontcolor="#e8b66a"];
+  worker -> pgb      [label="save snapshot"];
+  worker -> redis    [label="broadcast" color="#34e5a1" fontcolor="#34e5a1"];
+
+  { rank=same; beat; worker; }
+}
