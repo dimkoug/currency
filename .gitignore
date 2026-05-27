@@ -9,3 +9,7 @@ db.sqlite3
 backend/.venv/
 local-override.yml
 smoke-override.yml
+docs/linkedin-post.md
+docs/linkedin-post.txt
+frontend/test-results/
+frontend/playwright-report/

@@ -1,0 +1,6 @@
+# CI overlay: a single backend replica to fit the GitHub-hosted runner.
+# Used as:  docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d --build
+services:
+  backend:
+    deploy:
+      replicas: 1

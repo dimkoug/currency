@@ -7,5 +7,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./vitest.setup.js",
+    // Unit tests live in src/; e2e/ is Playwright (run separately).
+    include: ["src/**/*.{test,spec}.{js,jsx}"],
   },
 });
