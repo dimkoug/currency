@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import transaction
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from rates.models import Currency, ExchangeRate
@@ -6,8 +7,13 @@ from rates.models import Currency, ExchangeRate
 RATES_GROUP = "rates"
 
 
+@transaction.atomic
 def save_snapshot(snapshot):
-    """Persist a RateSnapshot: ensure Currency rows, insert base->quote ExchangeRate rows."""
+    """Persist a RateSnapshot: ensure Currency rows, insert base->quote ExchangeRate rows.
+
+    Wrapped in a transaction so a failure can't leave orphan Currency rows or a
+    partially-written rate snapshot.
+    """
     base, _ = Currency.objects.get_or_create(
         code=snapshot.base, defaults={"name": snapshot.base}
     )
