@@ -7,3 +7,5 @@ frontend/dist/
 db.sqlite3
 .venv/
 backend/.venv/
+local-override.yml
+smoke-override.yml

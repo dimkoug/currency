@@ -59,6 +59,12 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD", default="currency"),
         "HOST": env("POSTGRES_HOST", default="localhost"),
         "PORT": env("POSTGRES_PORT", default="5432"),
+        # Real connection pooling happens in pgbouncer. Server-side cursors are
+        # incompatible with pgbouncer transaction pooling, so disable them.
+        "CONN_MAX_AGE": env.int("CONN_MAX_AGE", default=0),
+        "DISABLE_SERVER_SIDE_CURSORS": env.bool(
+            "DB_DISABLE_SERVER_SIDE_CURSORS", default=True
+        ),
     }
 }
 
@@ -79,7 +85,13 @@ BASE_CURRENCY = env("BASE_CURRENCY", default="EUR")
 POLL_INTERVAL_SECONDS = env.int("POLL_INTERVAL_SECONDS", default=10)
 SUPPORTED_CURRENCIES = env.list("SUPPORTED_CURRENCIES", default=["EUR", "USD", "GBP"])
 
-REST_FRAMEWORK = {"DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"]}
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    # Public, read-only market data: no auth/session machinery (also avoids
+    # Set-Cookie/Vary that would defeat Varnish micro-caching of /api).
+    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
+}
 
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

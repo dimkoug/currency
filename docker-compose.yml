@@ -1,20 +1,41 @@
 services:
   postgres:
-    image: postgres:16
+    build: ./infra/postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PG_MAX_CONNECTIONS: ${PG_MAX_CONNECTIONS:-200}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    cpus: 4
+    mem_limit: 2g
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  pgbouncer:
+    build: ./infra/pgbouncer
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      LISTEN_PORT: "6432"
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "2000"
+      DEFAULT_POOL_SIZE: "25"
+    depends_on:
+      postgres: {condition: service_healthy}
+    cpus: 1
+    mem_limit: 256m
 
   redis:
     image: redis:7
+    cpus: 1
+    mem_limit: 512m
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -24,27 +45,40 @@ services:
   backend:
     build: ./backend
     env_file: .env
+    environment:
+      # Migrations run directly against Postgres, bypassing pgbouncer.
+      MIGRATE_DB_HOST: postgres
+      MIGRATE_DB_PORT: "5432"
     depends_on:
       postgres: {condition: service_healthy}
+      pgbouncer: {condition: service_started}
       redis: {condition: service_healthy}
     expose:
       - "8000"
+    cpus: 4
+    mem_limit: 2g
 
   celery-worker:
     build: ./backend
     command: celery -A config worker -l info
     env_file: .env
     depends_on:
-      - backend
-      - redis
+      backend: {condition: service_started}
+      pgbouncer: {condition: service_started}
+      redis: {condition: service_healthy}
+    cpus: 2
+    mem_limit: 1g
 
   celery-beat:
     build: ./backend
     command: celery -A config beat -l info
     env_file: .env
     depends_on:
-      - backend
-      - redis
+      backend: {condition: service_started}
+      pgbouncer: {condition: service_started}
+      redis: {condition: service_healthy}
+    cpus: 0.5
+    mem_limit: 256m
 
   frontend:
     build:
@@ -52,10 +86,21 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL}
         VITE_WS_URL: ${VITE_WS_URL}
+    expose:
+      - "80"
+    depends_on:
+      - backend
+    cpus: 1
+    mem_limit: 256m
+
+  varnish:
+    build: ./infra/varnish
     ports:
       - "8080:80"
     depends_on:
-      - backend
+      - frontend
+    cpus: 2
+    mem_limit: 1g
 
 volumes:
   pgdata:
