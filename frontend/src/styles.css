@@ -1,0 +1,374 @@
+/* =========================================================================
+   Meridian FX — "Midnight trading-desk" design system
+   Refined dark fintech aesthetic layered over Bootstrap 5.3 (dark theme).
+   Fonts: Fraunces (display) · Archivo (UI) · JetBrains Mono (data)
+   ========================================================================= */
+
+:root {
+  --ink-900: #070a12;
+  --ink-800: #0a0e18;
+  --surface: #111726;
+  --surface-2: #161d2e;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.13);
+  --text: #e9eef7;
+  --muted: #8893a7;
+  --mint: #34e5a1;
+  --mint-soft: rgba(52, 229, 161, 0.14);
+  --gold: #e8b66a;
+  --red: #ff6b6b;
+
+  --font-display: "Fraunces", Georgia, serif;
+  --font-ui: "Archivo", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", monospace;
+
+  --radius: 18px;
+  --shadow: 0 24px 60px -28px rgba(0, 0, 0, 0.85);
+}
+
+/* --- Bootstrap dark-theme variable overrides ------------------------------ */
+[data-bs-theme="dark"] {
+  --bs-body-bg: var(--ink-900);
+  --bs-body-color: var(--text);
+  --bs-body-font-family: var(--font-ui);
+  --bs-emphasis-color: #ffffff;
+  --bs-border-color: var(--line);
+  --bs-primary: var(--mint);
+  --bs-primary-rgb: 52, 229, 161;
+  --bs-link-color: var(--mint);
+  --bs-link-hover-color: #6ff0bf;
+  --bs-secondary-color: var(--muted);
+}
+
+/* --- Foundations ---------------------------------------------------------- */
+* { box-sizing: border-box; }
+
+html, body { min-height: 100%; }
+
+body {
+  font-family: var(--font-ui);
+  color: var(--text);
+  letter-spacing: 0.01em;
+  background-color: var(--ink-900);
+  /* Layered gradient mesh — emerald + cool-blue glows over deep ink */
+  background-image:
+    radial-gradient(60rem 60rem at 8% -10%, rgba(52, 229, 161, 0.10), transparent 60%),
+    radial-gradient(55rem 55rem at 100% 0%, rgba(74, 124, 255, 0.10), transparent 55%),
+    radial-gradient(70rem 50rem at 50% 120%, rgba(232, 182, 106, 0.07), transparent 60%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fine film-grain overlay for tactile depth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+#root { position: relative; z-index: 1; }
+
+::selection { background: var(--mint-soft); color: #d8fff0; }
+
+/* --- Type scale ----------------------------------------------------------- */
+.font-display { font-family: var(--font-display); }
+.font-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* --- Header --------------------------------------------------------------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(14px);
+  background: rgba(7, 10, 18, 0.72);
+  border-bottom: 1px solid var(--line);
+}
+.site-header .inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 1rem;
+}
+.brand { display: flex; align-items: center; gap: 0.7rem; text-decoration: none; }
+.brand__mark {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(150deg, var(--mint), #1f9f78);
+  color: #04140d;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 8px 22px -8px var(--mint);
+}
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.32rem;
+  color: var(--text);
+  line-height: 1;
+}
+.brand__name b { color: var(--mint); font-weight: 600; }
+
+/* Live status pill */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(52, 229, 161, 0.06);
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mint);
+}
+.dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--mint);
+  box-shadow: 0 0 0 0 rgba(52, 229, 161, 0.6);
+  animation: pulse 2s infinite;
+}
+.dot--idle { background: var(--muted); animation: none; box-shadow: none; }
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(52, 229, 161, 0.55); }
+  70% { box-shadow: 0 0 0 9px rgba(52, 229, 161, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(52, 229, 161, 0); }
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+.hero { padding-top: 3.6rem; padding-bottom: 2.2rem; }
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.6rem, 6vw, 4.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  margin: 0.8rem 0 0;
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--mint);
+}
+.hero p.lead {
+  color: var(--muted);
+  max-width: 34rem;
+  font-size: 1.05rem;
+  margin-top: 1rem;
+}
+
+/* --- Cards ---------------------------------------------------------------- */
+.fx-card {
+  position: relative;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.5rem 1.6rem;
+  box-shadow: var(--shadow);
+  height: 100%;
+  overflow: hidden;
+}
+/* hairline accent across the top */
+.fx-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--mint), transparent);
+  opacity: 0.5;
+}
+.fx-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.fx-card__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.35rem;
+  margin: 0.15rem 0 0;
+}
+.fx-card__meta { font-size: 0.8rem; color: var(--muted); }
+
+/* --- Converter ------------------------------------------------------------ */
+.conv-field {
+  background: var(--ink-800);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.9rem 1.05rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.conv-field:focus-within {
+  border-color: rgba(52, 229, 161, 0.5);
+  box-shadow: 0 0 0 3px var(--mint-soft);
+}
+.conv-field__label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+.conv-field .row-line {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* the big amount input + result value */
+.conv-amount {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  font-weight: 700;
+  padding: 0;
+  width: 100%;
+}
+.conv-amount:focus { outline: none; box-shadow: none; }
+.conv-amount::-webkit-outer-spin-button,
+.conv-amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.conv-result {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--mint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* currency selector (Bootstrap form-select restyled) */
+.cur-select.form-select {
+  width: auto;
+  min-width: 7.2rem;
+  background-color: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-weight: 600;
+  font-family: var(--font-ui);
+  border-radius: 10px;
+  padding: 0.5rem 2.2rem 0.5rem 0.85rem;
+}
+.cur-select.form-select:focus {
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px var(--mint-soft);
+}
+
+/* swap button between the two fields */
+.swap-row { display: flex; justify-content: center; margin: -0.55rem 0; position: relative; z-index: 2; }
+.swap-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--mint);
+  display: grid; place-items: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.35s cubic-bezier(.34,1.56,.64,1), background 0.2s, border-color 0.2s;
+}
+.swap-btn:hover { transform: rotate(180deg); background: var(--mint-soft); border-color: var(--mint); }
+
+.conv-rate-line {
+  margin-top: 1.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+.conv-rate-line b { color: var(--text); font-weight: 700; }
+
+/* --- Live rates board ----------------------------------------------------- */
+.rates-table { width: 100%; border-collapse: collapse; }
+.rates-table thead th {
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 0 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.rates-table tbody { display: table-row-group; }
+.rates-table td { padding: 0.7rem 0.5rem; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.rates-table tr:last-child td { border-bottom: none; }
+.rates-table tr { transition: background 0.15s ease; }
+.rates-table tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+
+.pair { display: flex; align-items: center; gap: 0.75rem; }
+.pair__flag { font-size: 1.35rem; line-height: 1; filter: saturate(1.1); }
+.pair__code { font-weight: 700; font-size: 0.98rem; letter-spacing: 0.02em; }
+.pair__name { color: var(--muted); font-size: 0.78rem; }
+.rate-val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.02rem;
+  text-align: right;
+  display: block;
+}
+.rate-base {
+  font-family: var(--font-mono);
+  color: var(--gold);
+  font-weight: 700;
+}
+.text-end-col { text-align: right; }
+
+.empty-state {
+  text-align: center;
+  color: var(--muted);
+  padding: 2.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+/* --- History chart -------------------------------------------------------- */
+.chart-wrap { width: 100%; height: 320px; margin-top: 0.5rem; }
+.recharts-cartesian-axis-tick-value { font-family: var(--font-mono); fill: var(--muted); font-size: 11px; }
+.fx-tooltip {
+  background: rgba(10, 14, 24, 0.92);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 0.55rem 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  box-shadow: var(--shadow);
+}
+.fx-tooltip .t-time { color: var(--muted); font-size: 0.72rem; }
+.fx-tooltip .t-val { color: var(--mint); font-weight: 700; }
+
+/* --- Footer --------------------------------------------------------------- */
+.site-footer {
+  margin-top: 3.5rem;
+  border-top: 1px solid var(--line);
+  padding-block: 1.6rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* --- Entrance animation --------------------------------------------------- */
+.reveal { opacity: 0; transform: translateY(18px); animation: rise 0.7s cubic-bezier(.22,1,.36,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: none; opacity: 1; transform: none; }
+  .dot { animation: none; }
+}
