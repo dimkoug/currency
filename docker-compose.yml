@@ -115,7 +115,8 @@ services:
         VITE_API_URL: ${VITE_API_URL}
         VITE_WS_URL: ${VITE_WS_URL}
     ports:
-      - "8080:80"
+      # Production: FRONTEND_BIND=127.0.0.1:8087 (behind the host nginx TLS proxy).
+      - "${FRONTEND_BIND:-8080}:80"
     depends_on:
       - backend
     cpus: 2

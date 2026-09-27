@@ -111,6 +111,31 @@ client receives a live broadcast.
 
 ---
 
+## Production deployment
+
+Live at **https://meridianfx.dimkoug.com/**. TLS is terminated by the server's
+host nginx with a Let's Encrypt certificate; the stack's front door is published
+on loopback only and proxied by
+[`deploy/nginx/meridianfx.dimkoug.com.conf`](deploy/nginx/meridianfx.dimkoug.com.conf).
+
+1. In the server's `.env`:
+   ```
+   FRONTEND_BIND=127.0.0.1:8087
+   ALLOWED_HOSTS=meridianfx.dimkoug.com,localhost,127.0.0.1,backend
+   CSRF_TRUSTED_ORIGINS=https://meridianfx.dimkoug.com
+   ```
+2. `docker compose up -d --build`
+3. Issue the certificate, install the vhost and reload:
+   ```bash
+   sudo certbot certonly --nginx -d meridianfx.dimkoug.com -m <email> --agree-tos --no-eff-email
+   sudo cp deploy/nginx/meridianfx.dimkoug.com.conf /etc/nginx/sites-available/
+   sudo ln -s /etc/nginx/sites-available/meridianfx.dimkoug.com.conf /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+Renewal is handled by the host's `certbot.timer`. The websocket URL is derived
+from the page origin, so the SPA automatically uses `wss://` over HTTPS.
+
 ## Testing
 
 **Backend** (needs Postgres + Redis — easiest via the running stack):
