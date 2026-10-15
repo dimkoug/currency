@@ -90,3 +90,24 @@ def test_backfill_command(mock_series, settings):
     assert (kwargs["end"] - kwargs["start"]).days == 10
     assert kwargs["symbols"] == ["EUR", "USD"]
     assert len(rows()) == 1
+
+
+@pytest.mark.django_db
+@patch("rates.management.commands.backfill_history.fetch_rate_series")
+def test_backfill_command_from_start_date_fetches_yearly_chunks(mock_series, settings):
+    settings.SUPPORTED_CURRENCIES = ["EUR", "USD"]
+
+    def fake(base, symbols, start, end, api_base_url):
+        return {start: {"USD": D(f"1.{start.year}")}}
+
+    mock_series.side_effect = fake
+    with patch("rates.management.commands.backfill_history.timezone.now",
+               return_value=datetime(2026, 10, 15, tzinfo=dt_timezone.utc)):
+        call_command("backfill_history", start="2024-03-01")
+    ranges = [(c.kwargs["start"], c.kwargs["end"]) for c in mock_series.call_args_list]
+    assert ranges == [
+        (date(2024, 3, 1), date(2024, 12, 31)),
+        (date(2025, 1, 1), date(2025, 12, 31)),
+        (date(2026, 1, 1), date(2026, 10, 15)),
+    ]
+    assert [r for _, r in rows()] == ["1.202400", "1.202500", "1.202600"]
