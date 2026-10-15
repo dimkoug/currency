@@ -4,13 +4,17 @@ import reducer, { setFrom, setTo, setAmount } from "../converterSlice";
 describe("converterSlice", () => {
   it("has default state", () => {
     const state = reducer(undefined, { type: "@@INIT" });
-    expect(state).toEqual({ from: "USD", to: "EUR", amount: 1 });
+    expect(state).toEqual({ from: "USD", to: "EUR", amount: "1" });
   });
 
   it("updates fields", () => {
     let state = reducer(undefined, setFrom("GBP"));
     state = reducer(state, setTo("JPY"));
-    state = reducer(state, setAmount(250));
-    expect(state).toEqual({ from: "GBP", to: "JPY", amount: 250 });
+    state = reducer(state, setAmount("250"));
+    expect(state).toEqual({ from: "GBP", to: "JPY", amount: "250" });
+  });
+
+  it("keeps the raw amount text so the field can be empty", () => {
+    expect(reducer(undefined, setAmount("")).amount).toBe("");
   });
 });

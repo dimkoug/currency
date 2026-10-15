@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = { from: "USD", to: "EUR", amount: 1 };
+// amount is the raw input text, so the field can be empty while typing.
+const initialState = { from: "USD", to: "EUR", amount: "1" };
 
 const converterSlice = createSlice({
   name: "converter",

@@ -8,7 +8,7 @@ export default function Converter() {
   const rates = useSelector((s) => s.liveRates.rates);
   const { from, to, amount } = useSelector((s) => s.converter);
   const codes = Object.keys(rates).sort();
-  const result = convert(from, to, amount, rates);
+  const result = amount === "" ? null : convert(from, to, amount, rates);
   const unit = convert(from, to, 1, rates);
 
   const swap = () => {
@@ -40,7 +40,7 @@ export default function Converter() {
             aria-label="amount"
             value={amount}
             min="0"
-            onChange={(e) => dispatch(setAmount(Number(e.target.value)))}
+            onChange={(e) => dispatch(setAmount(e.target.value))}
           />
           <select
             className="cur-select form-select"
