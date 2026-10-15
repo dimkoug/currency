@@ -129,16 +129,18 @@ jobs:
     steps:
       - name: Configure SSH
         env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          SSH_KEY: ${{ secrets.ssh_key }}
+          SSH_HOST: ${{ secrets.ssh_host }}
+          # Pinned host key (public) so a spoofed server can't receive the deploy.
+          HOST_KEY: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ6ySOkvXRmMbQjY1cS4RWAaE73AFLDiW5xeqPeIiw1J
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          echo "$SSH_HOST $HOST_KEY" > ~/.ssh/known_hosts
 
       - name: Pull, rebuild and health-check
         env:
-          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          TARGET: ${{ secrets.ssh_user }}@${{ secrets.ssh_host }}
           SHA: ${{ github.sha }}
         run: |
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$TARGET" bash -s -- "$SHA" <<'SCRIPT'
