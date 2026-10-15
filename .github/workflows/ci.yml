@@ -113,3 +113,45 @@ jobs:
       - name: Tear down
         if: always()
         run: docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+
+  deploy:
+    name: Deploy (production)
+    # CD: only from main, only once every test job is green.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, frontend, e2e]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://meridianfx.dimkoug.com/
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Pull, rebuild and health-check
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          SHA: ${{ github.sha }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$TARGET" bash -s -- "$SHA" <<'SCRIPT'
+          set -euo pipefail
+          cd /home/dimitris/projects/currency
+          git fetch -q origin main
+          git merge -q --ff-only "$1"
+          docker compose up -d --build --remove-orphans < /dev/null
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8087/api/rates/latest/ | grep -q '"USD"'; then
+              echo "deployed $(git log --oneline -1)"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::health check failed"; docker compose logs --tail=80 < /dev/null; exit 1
+          SCRIPT
