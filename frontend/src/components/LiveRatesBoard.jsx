@@ -1,6 +1,15 @@
 import { useSelector } from "react-redux";
 import { currencyMeta } from "../lib/currencyMeta";
 
+// fetched_at is when the ECB rate last changed (it publishes once per working
+// day), not the last poll — so show the date, e.g. "15 Oct, 17:00".
+function formatAsOf(iso) {
+  const d = new Date(iso);
+  const day = d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return `${day}, ${time}`;
+}
+
 export default function LiveRatesBoard() {
   const { base, rates, fetchedAt } = useSelector((s) => s.liveRates);
   const quotes = Object.keys(rates)
@@ -18,7 +27,7 @@ export default function LiveRatesBoard() {
         </div>
         <span className="fx-card__meta">
           {fetchedAt
-            ? `Updated ${new Date(fetchedAt).toLocaleTimeString()}`
+            ? `ECB rates as of ${formatAsOf(fetchedAt)}`
             : "Awaiting feed…"}
         </span>
       </div>
