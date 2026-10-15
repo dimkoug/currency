@@ -28,7 +28,7 @@ export default function HistoryChart({ base = "EUR" }) {
   const [quote, setQuote] = useState("USD");
   const { data = [] } = useGetHistoryQuery({ base, quote });
   const points = data.map((p) => ({
-    time: new Date(p.fetched_at).toLocaleTimeString(),
+    time: new Date(p.fetched_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
     rate: Number(p.rate),
   }));
 

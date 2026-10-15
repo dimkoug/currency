@@ -48,3 +48,45 @@ def test_latest_rates_payload_returns_most_recent():
     assert payload["rates"]["USD"] == "1.080000"
     assert payload["rates"]["EUR"] == "1.000000"
     assert "fetched_at" in payload
+
+
+def _snap(**rates):
+    return RateSnapshot(
+        base="EUR",
+        rates={"EUR": Decimal("1"), **{k: Decimal(v) for k, v in rates.items()}},
+        date="2026-05-27",
+    )
+
+
+@pytest.mark.django_db
+def test_save_snapshot_skips_unchanged_rates():
+    """Frankfurter (ECB) updates ~once a day but is polled every few seconds;
+    identical polls must not pile up duplicate rows."""
+    save_snapshot(_snap(USD="1.08", GBP="0.86"))
+    save_snapshot(_snap(USD="1.08", GBP="0.86"))
+    save_snapshot(_snap(USD="1.080000", GBP="0.860000"))
+    assert ExchangeRate.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_save_snapshot_inserts_only_changed_quotes():
+    save_snapshot(_snap(USD="1.08", GBP="0.86"))
+    save_snapshot(_snap(USD="1.09", GBP="0.86"))
+    usd = ExchangeRate.objects.filter(quote_id="USD").order_by("fetched_at")
+    assert [r.rate for r in usd] == [Decimal("1.08"), Decimal("1.09")]
+    assert ExchangeRate.objects.filter(quote_id="GBP").count() == 1
+
+
+@pytest.mark.django_db
+def test_save_snapshot_compares_against_latest_not_any_previous():
+    save_snapshot(_snap(USD="1.08"))
+    save_snapshot(_snap(USD="1.09"))
+    save_snapshot(_snap(USD="1.08"))  # back to an older value: still a change
+    assert ExchangeRate.objects.filter(quote_id="USD").count() == 3
+
+
+@pytest.mark.django_db
+def test_save_snapshot_unchanged_query_count(django_assert_max_num_queries):
+    save_snapshot(_snap(USD="1.08", GBP="0.86"))
+    with django_assert_max_num_queries(4):
+        save_snapshot(_snap(USD="1.08", GBP="0.86"))

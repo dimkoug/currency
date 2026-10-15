@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from rates.models import Currency, ExchangeRate
+from rates.models import Currency
 
 
 class CurrencySerializer(serializers.ModelSerializer):
@@ -7,8 +7,3 @@ class CurrencySerializer(serializers.ModelSerializer):
         model = Currency
         fields = ["code", "name", "symbol"]
 
-
-class HistoryPointSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ExchangeRate
-        fields = ["rate", "fetched_at"]

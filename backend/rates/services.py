@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.conf import settings
 from django.db import transaction
 from asgiref.sync import async_to_sync
@@ -27,12 +28,30 @@ def save_snapshot(snapshot):
     if missing:
         Currency.objects.bulk_create(missing, ignore_conflicts=True)
 
+    # The upstream (ECB via Frankfurter) changes ~once per working day but is
+    # polled every few seconds, so only store a row when a quote's rate differs
+    # from its latest stored value. Row timestamps therefore mark *changes*.
+    latest = dict(
+        ExchangeRate.objects.filter(base_id=snapshot.base, quote_id__in=codes)
+        .order_by("quote_id", "-fetched_at")
+        .distinct("quote_id")
+        .values_list("quote_id", "rate")
+    )
     new_rows = [
         ExchangeRate(base_id=snapshot.base, quote_id=code, rate=value)
         for code, value in snapshot.rates.items()
-        if code != snapshot.base
+        if code != snapshot.base and latest.get(code) != _quantize_rate(value)
     ]
-    ExchangeRate.objects.bulk_create(new_rows)
+    if new_rows:
+        ExchangeRate.objects.bulk_create(new_rows)
+
+
+_RATE_FIELD = ExchangeRate._meta.get_field("rate")
+
+
+def _quantize_rate(value):
+    """Round to the column's precision so 1.0800001 == stored 1.080000."""
+    return Decimal(value).quantize(Decimal(1).scaleb(-_RATE_FIELD.decimal_places))
 
 
 def latest_rates_payload():
