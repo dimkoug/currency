@@ -1,6 +1,8 @@
+from datetime import datetime, time, timezone as dt_timezone
 from decimal import Decimal
 from django.conf import settings
-from django.db import transaction
+from django.db import connection, transaction
+from django.db.models import Min
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from rates.models import Currency, ExchangeRate
@@ -52,6 +54,68 @@ _RATE_FIELD = ExchangeRate._meta.get_field("rate")
 def _quantize_rate(value):
     """Round to the column's precision so 1.0800001 == stored 1.080000."""
     return Decimal(value).quantize(Decimal(1).scaleb(-_RATE_FIELD.decimal_places))
+
+
+# ECB reference rates are published around 16:00 CET (~15:00 UTC).
+ECB_PUBLICATION_UTC = time(15, 0)
+
+# Delete every row whose rate equals the previous row for the same pair, so
+# only the rows where a rate actually changed remain (matching save_snapshot).
+PRUNE_SQL = """
+DELETE FROM {table} t
+USING (
+    SELECT id, rate, LAG(rate) OVER (
+        PARTITION BY base_id, quote_id ORDER BY fetched_at, id
+    ) AS prev_rate
+    FROM {table}
+) d
+WHERE t.id = d.id AND d.rate = d.prev_rate
+"""
+
+
+def prune_duplicate_rates():
+    """Delete rows that repeat their pair's previous rate; return the count."""
+    table = connection.ops.quote_name(ExchangeRate._meta.db_table)
+    with connection.cursor() as cursor:
+        cursor.execute(PRUNE_SQL.format(table=table))
+        return cursor.rowcount
+
+
+@transaction.atomic
+def backfill_history(base, series):
+    """Store daily fixings ({date: {code: Decimal}}) that predate polled data.
+
+    For each pair only days before its earliest stored row are used, and only
+    days where the rate changed are stored, timestamped at ECB publication
+    time. Re-running is a no-op. Returns the number of rows created.
+    """
+    codes = {base, *(code for rates in series.values() for code in rates)}
+    Currency.objects.bulk_create(
+        [Currency(code=code, name=code) for code in codes], ignore_conflicts=True
+    )
+    earliest = dict(
+        ExchangeRate.objects.filter(base_id=base)
+        .values("quote_id")
+        .annotate(first=Min("fetched_at"))
+        .values_list("quote_id", "first")
+    )
+    new_rows, previous = [], {}
+    for day, rates in sorted(series.items()):
+        when = datetime.combine(day, ECB_PUBLICATION_UTC, tzinfo=dt_timezone.utc)
+        for code, value in rates.items():
+            rate = _quantize_rate(value)
+            first = earliest.get(code)
+            if code == base or (first and when >= first) or previous.get(code) == rate:
+                continue
+            previous[code] = rate
+            new_rows.append(
+                ExchangeRate(base_id=base, quote_id=code, rate=rate, fetched_at=when)
+            )
+    ExchangeRate.objects.bulk_create(new_rows)
+    # The first polled row may now repeat the last backfilled rate.
+    if new_rows:
+        prune_duplicate_rates()
+    return len(new_rows)
 
 
 def latest_rates_payload():

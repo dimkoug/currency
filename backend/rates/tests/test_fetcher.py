@@ -37,3 +37,22 @@ def test_fetch_latest_rates_builds_request(mock_get):
     assert args[0] == "https://api.frankfurter.app/latest"
     assert kwargs["params"] == {"from": "EUR", "to": "USD"}
     assert kwargs["timeout"] == 10
+
+
+@patch("rates.fetcher.requests.get")
+def test_fetch_rate_series_parses_timeseries(mock_get):
+    from datetime import date
+    from rates.fetcher import fetch_rate_series
+    mock_get.return_value = _mock_response({
+        "amount": 1, "base": "EUR", "start_date": "2026-10-09", "end_date": "2026-10-12",
+        "rates": {"2026-10-12": {"USD": 1.1181}, "2026-10-09": {"USD": 1.1206}},
+    })
+    series = fetch_rate_series(
+        base="EUR", symbols=["EUR", "USD"], start=date(2026, 10, 9), end=date(2026, 10, 12),
+        api_base_url="https://api.frankfurter.app",
+    )
+    args, kwargs = mock_get.call_args
+    assert args[0] == "https://api.frankfurter.app/2026-10-09..2026-10-12"
+    assert kwargs["params"] == {"from": "EUR", "to": "USD"}
+    assert list(series) == [date(2026, 10, 9), date(2026, 10, 12)]  # sorted
+    assert series[date(2026, 10, 12)] == {"USD": Decimal("1.1181")}

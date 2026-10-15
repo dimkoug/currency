@@ -23,7 +23,7 @@ def add_rate(db):
 
     def _add(when, rate, quote="USD"):
         row = ExchangeRate.objects.create(base_id="EUR", quote_id=quote, rate=Decimal(rate))
-        # fetched_at is auto_now_add, so backdate with an update.
+        # Backdate via update so the row is stored like a polled one.
         ExchangeRate.objects.filter(pk=row.pk).update(fetched_at=when)
 
     return _add

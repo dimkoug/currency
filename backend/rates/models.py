@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Currency(models.Model):
@@ -18,7 +19,7 @@ class ExchangeRate(models.Model):
     base = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name="rates_as_base")
     quote = models.ForeignKey(Currency, on_delete=models.CASCADE, related_name="rates_as_quote")
     rate = models.DecimalField(max_digits=18, decimal_places=6)
-    fetched_at = models.DateTimeField(auto_now_add=True)
+    fetched_at = models.DateTimeField(default=timezone.now, editable=False)
 
     class Meta:
         indexes = [
